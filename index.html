@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Цифровой двойник автозавода</title>
+<style>
+:root{--bg:#f5f4f2;--card:#fff;--ink:#1d1d1f;--mute:#6b6b70;--line:#e2e0dc;--brand:#ff3b2f;--ok:#1f9d55;--warn:#c27a00;--bad:#d62839;--okbg:#e4f5ea;--warnbg:#fdf0d5;--badbg:#fde3e6;--car:#9a9aa1;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#141416;--card:#1e1e21;--ink:#f2f2f3;--mute:#9a9aa1;--line:#2e2e33;--ok:#4cc789;--warn:#f0b43a;--bad:#ff6674;--okbg:#17332f;--warnbg:#3a2d0f;--badbg:#3f1a20}}
+:root[data-theme="dark"]{--bg:#141416;--card:#1e1e21;--ink:#f2f2f3;--mute:#9a9aa1;--line:#2e2e33;--ok:#4cc789;--warn:#f0b43a;--bad:#ff6674;--okbg:#17332f;--warnbg:#3a2d0f;--badbg:#3f1a20}
+*{box-sizing:border-box}html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 "Segoe UI",Roboto,Arial,sans-serif}
+header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:3px solid var(--brand);background:var(--card)}
+h1{font-size:20px;margin:0}h1 small{display:block;font-weight:400;color:var(--mute);font-size:13px}
+h2{font-size:15px;margin:0 0 10px}
+button{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:8px 12px;border-radius:6px}
+button.p{background:var(--brand);border-color:var(--brand);color:#fff}
+button:focus-visible,[data-i]:focus-visible{outline:3px solid var(--brand);outline-offset:2px}
+main{max-width:1200px;margin:0 auto;padding:16px 20px;display:grid;gap:16px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.k{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:12px}
+.k b{display:block;font-size:24px;line-height:1.15}.k span{color:var(--mute);font-size:13px}.k i{font-style:normal;font-size:12px;color:var(--mute);display:block}
+.card{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:14px;min-width:0}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}
+svg{width:100%;display:block}#floor{height:auto}
+.stn{cursor:pointer}.stn rect{fill:var(--card);stroke-width:2.5}
+.stn.ok rect{stroke:var(--ok);fill:var(--okbg)}.stn.warn rect{stroke:var(--warn);fill:var(--warnbg)}.stn.bad rect{stroke:var(--bad);fill:var(--badbg)}
+.stn.sel rect{stroke:var(--brand);stroke-width:4}
+.stn text{fill:var(--ink);font-size:13px}.stn .s{font-size:11.5px;fill:var(--mute)}.stn.bad .t{fill:var(--bad);font-weight:700}.stn.warn .t{fill:var(--warn);font-weight:700}
+.legend{font-size:12px;color:var(--mute);margin:6px 0 0}
+.rec{border:1px solid var(--line);border-left:4px solid var(--brand);border-radius:6px;padding:9px 10px;margin-bottom:8px;font-size:13px}
+.rec button{margin-top:6px;padding:5px 10px;font-size:13px}.rec em{font-style:normal;color:var(--ok);font-weight:700;margin-left:6px}
+ul{list-style:none;margin:0;padding:0;max-height:250px;overflow:auto}
+li{padding:6px 0;border-bottom:1px solid var(--line);font-size:13px}li time{color:var(--mute);margin-right:6px}
+li.bad b{color:var(--bad)}li.warn b{color:var(--warn)}li.ok b{color:var(--ok)}
+.bar{height:6px;background:var(--line);border-radius:3px;overflow:hidden;margin-top:3px}.bar div{height:100%;background:var(--ok)}.bar.lo div{background:var(--warn)}.bar.no div{background:var(--bad)}
+.pr{font-size:13px;margin-bottom:9px}
+label{display:block;font-size:13px;margin:8px 0 2px;color:var(--mute)}input[type=range]{width:100%;accent-color:var(--brand)}
+.big{font-size:28px;font-weight:700;color:var(--ok)}.note{color:var(--mute);font-size:12px}
+#spark{height:70px}
+</style>
+</head>
+<body>
+<header>
+<h1>Цифровой двойник автозавода<small>Прототип · синтетические данные · смена 16.10.2026 · <span id="clock"></span></small></h1>
+<div>
+<button class="p" data-sc="weld">Сбой сварочного робота</button>
+<button data-sc="door">Задержка поставки дверей</button>
+<button data-sc="paint">Брак покраски</button>
+<button id="pause">Пауза</button>
+<button id="theme">Тема</button>
+</div>
+</header>
+<main>
+<section class="kpis" id="kpis" aria-label="Ключевые показатели"></section>
+<section class="card"><h2>Схема завода: кузова движутся по конвейеру в реальном времени</h2>
+<svg id="floor" viewBox="0 0 1040 380" role="img" aria-label="Схема производственных участков"></svg>
+<p class="legend">Серый кузов: до покраски, цветной: после. Если участок встал, за ним выстраивается очередь, и видно узкое место. Нажмите на участок для деталей.</p></section>
+<div class="two">
+<section class="card"><h2>ИИ-диспетчер: что делать прямо сейчас <span class="note" id="svd"></span></h2><div id="recs"></div></section>
+<section class="card"><h2>Комплектующие: запас в часах работы</h2><div id="parts"></div></section>
+</div>
+<div class="two">
+<section class="card"><h2>События и отклонения</h2><ul id="ev" aria-live="polite"></ul></section>
+<section class="card"><h2 id="dt">Участок</h2><div id="detail"></div><svg id="spark" viewBox="0 0 300 70" preserveAspectRatio="none" aria-label="График вибрации"></svg><p class="note">Вибрация за последние 40 минут, мм/с. Красная линия: порог 7.</p></section>
+</div>
+<section class="card"><h2>Бизнес-эффект</h2>
+<div class="two">
+<div>
+<label>Простои в месяц, часов: <b id="v1">40</b></label><input type="range" id="r1" min="10" max="120" value="40">
+<label>Стоимость часа простоя, тыс. ₸: <b id="v2">1500</b></label><input type="range" id="r2" min="200" max="5000" step="100" value="1500">
+<label>Сокращение простоев с ИИ, %: <b id="v3">25</b></label><input type="range" id="r3" min="5" max="50" value="25">
+</div>
+<div><span class="note">Экономия в год</span><div class="big" id="sav"></div><p class="note" id="sav2"></p><p class="note">Все цифры условные. Заменить данными АЛЛЮР: журнал простоев, план, брак.</p></div>
+</div></section>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const N=['Штамповка','Сварка кузова 1','Сварка кузова 2','Подготовка к покраске','Покраска','Сушка','Сборка 1','Сборка 2','Контроль качества','Склад готовой продукции'];
+const Z=['Прессовый цех','Кузовной цех','Кузовной цех','Покрасочный цех','Покрасочный цех','Покрасочный цех','Сборочный цех','Сборочный цех','Контроль','Логистика'];
+const XY=N.map((_,i)=>i<5?[90+i*205,150]:[910-(i-5)*205,330]);
+const PT=[[-.5,20,150],...XY.slice(0,5).map((p,i)=>[i,p[0],p[1]]),[4.4,985,150],[4.6,985,330],...XY.slice(5).map((p,i)=>[i+5,p[0],p[1]]),[9.5,20,330]];
+function pos(u){if(u<=PT[0][0])return[PT[0][1],PT[0][2]];for(let i=1;i<PT.length;i++){if(u<=PT[i][0]){const a=PT[i-1],b=PT[i],f=(u-a[0])/(b[0]-a[0]);return[a[1]+(b[1]-a[1])*f,a[2]+(b[2]-a[2])*f]}}const l=PT[PT.length-1];return[l[1],l[2]]}
+const S=N.map((n,i)=>({id:i,n,load:70+Math.random()*20,vib:2+Math.random()*1.2,temp:65,down:0,pm:false,starve:false,faulty:false,vh:[],risk:0,st:'ok'}));
+const P=[{n:'Двери',s:6,cover:5.5,eta:70},{n:'Колёса и шины',s:7,cover:9,eta:100},{n:'Жгуты проводов',s:6,cover:7,eta:60},{n:'Краска и лак',s:4,cover:11,eta:90}];
+const COL=['#ff3b2f','#2f6bff','#2a2a2e','#e8e8ea','#1f9d55','#f0b43a'];
+const vin=()=>'ALR'+(1000+Math.floor(Math.random()*9000));
+let cars=[...Array(18)].map((_,i)=>({p:i*.5,vin:vin(),col:COL[i%6]}));
+let sel=4,paused=false,sim=new Date(2026,9,16,10,0),ticks=100,downTicks=6,produced=78,fpy=96.8,defect=0,saved=0,evs=[],exits=[],recs=[];
+for(let i=0;i<60;i++)exits.push(performance.now()-i*1500);
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),tm=()=>sim.toTimeString().slice(0,5),isDown=s=>s.down>0||s.starve;
+const log=(c,m)=>{evs.unshift({c,t:tm(),m});evs=evs.slice(0,40)};
+const risk=s=>clamp((s.vib-2)/5*60+(s.temp-60)/35*40,0,100);
+function eta(s){const h=s.vh.slice(-10);if(h.length<5)return null;const k=(h[h.length-1]-h[0])/(h.length-1);return k>.03?Math.max(1,Math.round((7-s.vib)/k)):null}
+function tick(){
+ sim=new Date(sim.getTime()+60000);ticks++;let any=false;
+ S.forEach(s=>{
+  if(s.down>0){s.down--;s.load=0;if(s.down===0){s.vib=2+Math.random();s.faulty=false;log('ok',s.n+': '+(s.pm?'плановое ТО завершено':'ремонт завершён, участок в работе'));s.pm=false}}
+  else if(!s.starve){
+   s.load=clamp(s.load+(Math.random()-.5)*6,55,98);
+   s.vib=clamp(s.vib+(Math.random()*.12-.04)+(s.faulty?.4:0),1.5,8);
+   s.temp=62+(s.vib-2)*5+Math.random()*2;
+   if(s.vib>=7){s.down=8;s.load=0;log('bad',s.n+': аварийная остановка, вибрация выше порога')}
+  }
+  s.risk=risk(s);s.vh.push(s.vib);if(s.vh.length>40)s.vh.shift();
+  const o=s.st;s.st=s.down>0?(s.pm?'warn':'bad'):s.starve?'bad':s.risk>=55?'warn':'ok';
+  if(o==='ok'&&s.st==='warn')log('warn',s.n+': риск остановки '+Math.round(s.risk)+'%');
+ });
+ P.forEach(p=>{const w=p.out;p.cover=Math.max(0,p.cover-(1/60)*(S[p.s].load/90||.5));p.eta--;
+  if(p.eta<=0){p.cover+=8;p.eta=60+Math.floor(Math.random()*60);log('ok','Поставка: '+p.n+' прибыла на склад')}
+  p.out=p.cover<=0;if(p.out&&!w)log('bad',p.n+': запас исчерпан, '+N[p.s]+' простаивает')});
+ S.forEach(s=>s.starve=false);P.forEach(p=>{if(p.out)S[p.s].starve=true});
+ if(S.some(isDown))downTicks++;
+ fpy=clamp(fpy+(Math.random()-.5)*.3-(defect>0?.5:0),88,98.2);
+ if(defect>0){defect--;if(defect===0)log('ok','Покраска: показатели брака вернулись в норму')}
+ render();
+}
+function maint(s){s.down=3;s.pm=true;s.faulty=false;saved+=22;log('ok','ИИ: '+s.n+' на плановом ТО, 3 мин вместо ~25 мин аварии')}
+function buildRecs(){
+ recs=[];
+ S.filter(s=>s.risk>=55&&!isDown(s)).forEach(s=>{const e=eta(s);recs.push({k:'m'+s.id,t:s.n+': риск остановки '+Math.round(s.risk)+'%'+(e?', прогноз ~'+e+' мин':'')+'. Провести плановое ТО сейчас: 3 мин вместо ~25 мин аварии.',g:'+22 мин',a:'Запланировать ТО',f:()=>maint(s)})});
+ P.forEach((p,i)=>{if(p.cover<2&&p.cover>0&&p.eta>8)recs.push({k:'p'+i,t:p.n+': запас '+p.cover.toFixed(1)+' ч, поставка через '+p.eta+' мин. Запросить срочную доставку.',g:'+15 мин',a:'Заказать срочно',f:()=>{p.eta=5;saved+=15;log('ok','ИИ: срочная доставка заказана, '+p.n)}})});
+ if(defect>0)recs.push({k:'d',t:'Брак покраски вырос до '+(100-fpy).toFixed(1)+'%. Проверить вязкость краски и фильтры камеры.',g:'+8 мин',a:'Создать наряд',f:()=>{defect=0;saved+=8;log('ok','ИИ: наряд на проверку камеры покраски создан')}});
+ const b=[...S].filter(s=>!isDown(s)).sort((a,c)=>c.load-a.load)[0];
+ if(b&&b.load>93)recs.push({k:'b',t:'Узкое место: '+b.n+' ('+b.load.toFixed(0)+'% загрузки). Добавить оператора на участок.',g:'−10% загрузки',a:'Перераспределить',f:()=>{b.load-=10;saved+=3;log('ok','ИИ: на '+b.n+' добавлен оператор')}});
+ recs=recs.slice(0,4);
+}
+function render(){
+ const el=(sim-new Date(2026,9,16,8,0))/3600000,rem=Math.max(0,(new Date(2026,9,16,16,0)-sim)/3600000);
+ const now=performance.now();exits=exits.filter(t=>now-t<90000);
+ const tp=exits.length*.6,avail=1-downTicks/ticks,oee=avail*clamp(tp/42,0,1)*fpy;
+ const plan=42*el,fc=produced+tp*rem,cpm=+$('r2').value/60;
+ $('clock').textContent=tm();
+ $('kpis').innerHTML=[['Выпуск за смену',Math.floor(produced)+' из '+Math.round(plan),'план к этому часу'],['Прогноз смены',Math.round(fc)+' из 336',fc>=336?'план выполняется':'отставание '+Math.round(336-fc)+' авто'],['Производительность',tp.toFixed(0)+' авто/ч','норма 42'],['OEE',oee.toFixed(0)+'%','доступность × скорость × качество'],['Качество с 1-го раза',fpy.toFixed(1)+'%','цель 97%'],['Простой линии',downTicks+' мин','за смену']].map(k=>'<div class="k"><span>'+k[0]+'</span><b>'+k[1]+'</b><i>'+k[2]+'</i></div>').join('');
+ const lab=s=>s.starve?'Нет деталей':s.down>0?(s.pm?'Плановое ТО':'Авария'):s.st==='warn'?'Внимание':'Норма';
+ const bn=[...S].filter(s=>!isDown(s)).sort((a,c)=>c.load-a.load)[0];
+ let g='<polyline points="'+PT.map(p=>p[1]+','+p[2]).join(' ')+'" fill="none" stroke="var(--line)" stroke-width="10" stroke-linejoin="round"/><polyline points="'+PT.map(p=>p[1]+','+p[2]).join(' ')+'" fill="none" stroke="var(--mute)" stroke-width="1.5" stroke-dasharray="6 6" stroke-linejoin="round"/>';
+ g+=S.map(s=>{const[x,y]=XY[s.id];return '<g class="stn '+s.st+(s.id===sel?' sel':'')+'" data-i="'+s.id+'" tabindex="0" role="button" aria-label="'+s.n+': '+lab(s)+'"><rect x="'+(x-80)+'" y="'+(y-100)+'" width="160" height="68" rx="6"/><text x="'+(x-72)+'" y="'+(y-80)+'" font-weight="600">'+(s.id+1)+'. '+s.n+'</text><text class="s" x="'+(x-72)+'" y="'+(y-64)+'">'+Z[s.id]+' · '+s.load.toFixed(0)+'%</text><text class="t" x="'+(x-72)+'" y="'+(y-46)+'">'+lab(s)+(bn&&bn.id===s.id?' · узкое место':'')+'</text></g>'}).join('');
+ $('floor').innerHTML=g+'<g id="cars"></g>';
+ $('ev').innerHTML=evs.map(e=>'<li class="'+e.c+'"><time>'+e.t+'</time><b>'+e.m+'</b></li>').join('');
+ const s=S[sel],e=eta(s);
+ $('dt').textContent='Участок: '+s.n;
+ $('detail').innerHTML='<p>Состояние: <b>'+lab(s)+'</b>. Риск остановки: <b>'+Math.round(s.risk)+'%</b>. Вибрация: <b>'+s.vib.toFixed(1)+'</b> мм/с. Температура: <b>'+s.temp.toFixed(0)+'</b> °C. Загрузка: <b>'+s.load.toFixed(0)+'%</b>.</p>'+(e&&!isDown(s)?'<p>Прогноз ИИ: остановка возможна через <b>~'+e+' мин</b>.</p>':'');
+ const y7=70-6/7*70,pts=s.vh.map((v,i)=>(i*300/39).toFixed(1)+','+(70-clamp((v-1)/7,0,1)*70).toFixed(1)).join(' ');
+ $('spark').innerHTML='<line x1="0" x2="300" y1="'+y7+'" y2="'+y7+'" stroke="var(--bad)" stroke-dasharray="4"/><polyline points="'+pts+'" fill="none" stroke="var(--brand)" stroke-width="2"/>';
+ $('parts').innerHTML=P.map(p=>{const c=p.cover<=0?'no':p.cover<2?'lo':'';return '<div class="pr"><b>'+p.n+'</b> → '+N[p.s]+': '+p.cover.toFixed(1)+' ч · поставка через '+p.eta+' мин<div class="bar '+c+'"><div style="width:'+clamp(p.cover/12*100,2,100)+'%"></div></div></div>'}).join('');
+ buildRecs();
+ $('recs').innerHTML=recs.length?recs.map(r=>'<div class="rec">'+r.t+'<em>'+r.g+'</em><br><button data-k="'+r.k+'">'+r.a+'</button></div>').join(''):'<p class="note">Критичных рисков нет. ИИ продолжает наблюдение за 10 участками.</p>';
+ $('svd').textContent='Сэкономлено ИИ: '+Math.round(saved*cpm/1000)+' тыс. ₸';
+ $('sav2').textContent='За эту смену ИИ-диспетчер уже сэкономил '+saved+' мин простоя.';
+}
+function move(dt){
+ cars.sort((a,b)=>b.p-a.p);
+ cars.forEach((c,k)=>{const n=Math.round(c.p);let v=.22;
+  if(n>=0&&n<=9){const s=S[n];if(isDown(s)&&Math.abs(c.p-n)<.3)v=0;else v*=.7+.3*s.load/90}
+  let np=c.p+v*dt;const a=cars[k-1];if(a)np=Math.min(np,a.p-.3);if(np>c.p)c.p=np;
+  if(c.p>=9.4){c.p=-.3;c.vin=vin();c.col=COL[Math.floor(Math.random()*6)];exits.push(performance.now());produced+=.6}});
+}
+function drawCars(){const g=$('cars');if(!g)return;g.innerHTML=cars.map(c=>{const[x,y]=pos(c.p);return '<rect x="'+(x-11)+'" y="'+(y-6)+'" width="22" height="12" rx="3" fill="'+(c.p<4.5?'var(--car)':c.col)+'" stroke="var(--ink)" stroke-width=".8"><title>'+c.vin+'</title></rect>'}).join('')}
+let last=performance.now();
+function frame(t){const dt=Math.min(.1,(t-last)/1000);last=t;if(!paused)move(dt);drawCars();requestAnimationFrame(frame)}
+$('floor').addEventListener('click',e=>{const b=e.target.closest('[data-i]');if(b){sel=+b.dataset.i;render()}});
+$('floor').addEventListener('keydown',e=>{if(e.key==='Enter'){const b=e.target.closest('[data-i]');if(b){sel=+b.dataset.i;render()}}});
+$('recs').addEventListener('click',e=>{const b=e.target.closest('[data-k]');if(!b)return;const r=recs.find(x=>x.k===b.dataset.k);if(r){r.f();render()}});
+document.querySelectorAll('[data-sc]').forEach(b=>b.onclick=()=>{
+ const k=b.dataset.sc;
+ if(k==='weld'){const s=S[1+Math.floor(Math.random()*2)];s.faulty=true;sel=s.id;log('warn',s.n+': сбой сварочного робота, вибрация растёт')}
+ if(k==='door'){P[0].cover=.4;P[0].eta=45;sel=6;log('warn','Двери: поставка задерживается на 45 мин, запас 0.4 ч')}
+ if(k==='paint'){defect=18;sel=4;log('warn','Покраска: рост брака (потёки, включения)')}
+ render()});
+$('pause').onclick=e=>{paused=!paused;e.target.textContent=paused?'Продолжить':'Пауза'};
+$('theme').onclick=()=>{const d=document.documentElement,dark=getComputedStyle(d).getPropertyValue('--bg').trim()==='#141416';d.dataset.theme=dark?'light':'dark'};
+['r1','r2','r3'].forEach(i=>$(i).oninput=biz);
+function biz(){const h=+$('r1').value,c=+$('r2').value,p=+$('r3').value;$('v1').textContent=h;$('v2').textContent=c;$('v3').textContent=p;$('sav').textContent=(h*12*c*1000*p/100/1e6).toFixed(0)+' млн ₸ в год'}
+for(let i=0;i<30;i++)S.forEach(s=>s.vh.push(s.vib));
+S.forEach(s=>s.risk=risk(s));
+log('ok','Система запущена: 10 участков и 4 вида комплектующих под наблюдением');
+render();biz();
+setInterval(()=>{if(!paused)tick()},1500);
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
